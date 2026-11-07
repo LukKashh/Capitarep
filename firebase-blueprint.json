@@ -1,0 +1,193 @@
+{
+  "entities": {
+    "PlayerState": {
+      "title": "PlayerState",
+      "description": "User game state and profile data",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Unique user ID matching auth UID",
+          "maxLength": 128
+        },
+        "username": {
+          "type": "string",
+          "description": "Player in-game display name",
+          "maxLength": 32,
+          "pattern": "^[a-zA-Z0-9_ -]+$"
+        },
+        "version": {
+          "type": "number",
+          "description": "Optimistic concurrency lock version"
+        },
+        "netWorth": {
+          "type": "number",
+          "description": "Calculated total player net worth"
+        },
+        "level": {
+          "type": "number",
+          "description": "Current player tycoon level"
+        },
+        "state": {
+          "type": "object",
+          "description": "Authoritative game state payload"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Timestamp of last action in milliseconds"
+        }
+      },
+      "required": ["userId", "username", "version", "state"]
+    },
+    "Corporation": {
+      "title": "Corporation",
+      "description": "Online cooperative player corporation document",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique corporation identifier",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "description": "Corporation name",
+          "maxLength": 48
+        },
+        "tag": {
+          "type": "string",
+          "description": "Short ticker tag",
+          "maxLength": 8
+        },
+        "founderId": {
+          "type": "string",
+          "description": "UID of founder player",
+          "maxLength": 128
+        },
+        "version": {
+          "type": "number",
+          "description": "Concurrency version counter"
+        },
+        "state": {
+          "type": "object",
+          "description": "Corporation full state payload"
+        },
+        "dissolved": {
+          "type": "boolean",
+          "description": "Whether the corporation has been dissolved"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Last update timestamp"
+        }
+      },
+      "required": ["id", "name", "tag", "founderId", "version", "state"]
+    },
+    "LedgerEntry": {
+      "title": "LedgerEntry",
+      "description": "Immutable transaction or activity log entry",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique log identifier",
+          "maxLength": 128
+        },
+        "type": {
+          "type": "string",
+          "description": "Transaction category",
+          "maxLength": 64
+        },
+        "source": {
+          "type": "string",
+          "description": "Origin entity or player ID",
+          "maxLength": 128
+        },
+        "destination": {
+          "type": "string",
+          "description": "Target entity or treasury",
+          "maxLength": 128
+        },
+        "amount": {
+          "type": "number",
+          "description": "Monetary value transferred"
+        },
+        "entity": {
+          "type": "string",
+          "description": "Associated item or business name",
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Timestamp entry was recorded"
+        }
+      },
+      "required": ["id", "type", "source", "destination", "amount"]
+    },
+    "CollectibleStock": {
+      "title": "CollectibleStock",
+      "description": "Global inventory count for limited-edition items",
+      "type": "object",
+      "properties": {
+        "itemId": {
+          "type": "string",
+          "description": "Item definition identifier",
+          "maxLength": 64
+        },
+        "sold": {
+          "type": "number",
+          "description": "Units sold globally"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Last stock purchase timestamp"
+        }
+      },
+      "required": ["itemId", "sold"]
+    },
+    "UsernameRecord": {
+      "title": "UsernameRecord",
+      "description": "Unique username registry index",
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "Lowercase normalized username",
+          "maxLength": 32
+        },
+        "userId": {
+          "type": "string",
+          "description": "Player UID that owns this username",
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Registration timestamp"
+        }
+      },
+      "required": ["username", "userId"]
+    }
+  },
+  "firestore": {
+    "/player_states/{userId}": {
+      "schema": "PlayerState",
+      "description": "Stores user cloud saved game state"
+    },
+    "/corporations/{corpId}": {
+      "schema": "Corporation",
+      "description": "Stores online player corporations"
+    },
+    "/ledger/{ledgerId}": {
+      "schema": "LedgerEntry",
+      "description": "Stores global and corp transaction logs"
+    },
+    "/collectible_stock/{itemId}": {
+      "schema": "CollectibleStock",
+      "description": "Tracks limited collectible supplies across players"
+    },
+    "/usernames/{usernameLower}": {
+      "schema": "UsernameRecord",
+      "description": "Unique username reservation index"
+    }
+  }
+}

@@ -1,0 +1,149 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default-deny catch-all rule
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Connection testing endpoint for health check
+    match /test/{testId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Hardened global helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == "lukass16.ivanovs@gmail.com"
+        || exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidPlayerState(data) {
+      return data.keys().hasAll(['userId', 'username', 'version', 'state'])
+        && data.userId is string && data.userId.size() <= 128
+        && data.username is string && data.username.size() <= 32
+        && data.version is number
+        && data.state is map;
+    }
+
+    function isValidCorporation(data) {
+      return data.keys().hasAll(['id', 'name', 'tag', 'founderId', 'version', 'state'])
+        && data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() <= 48
+        && data.tag is string && data.tag.size() <= 8
+        && data.founderId is string && data.founderId.size() <= 128
+        && data.version is number
+        && data.state is map;
+    }
+
+    function isValidLedger(data) {
+      return data.keys().hasAll(['id', 'type', 'source', 'destination', 'amount'])
+        && data.id is string && data.id.size() <= 128
+        && data.type is string && data.type.size() <= 64
+        && data.source is string && data.source.size() <= 128
+        && data.destination is string && data.destination.size() <= 128
+        && data.amount is number;
+    }
+
+    function isValidCollectibleStock(data) {
+      return data.keys().hasAll(['itemId', 'sold'])
+        && data.itemId is string && data.itemId.size() <= 64
+        && data.sold is number;
+    }
+
+    function isValidUsername(data) {
+      return data.keys().hasAll(['username', 'userId'])
+        && data.username is string && data.username.size() <= 32
+        && data.userId is string && data.userId.size() <= 128;
+    }
+
+    // Admin collection
+    match /admins/{userId} {
+      allow get: if isSignedIn();
+      allow list, write: if false;
+    }
+
+    // Player state collection (cloud-saved game per player)
+    match /player_states/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isOwner(userId)
+        && isValidPlayerState(incoming())
+        && incoming().userId == userId;
+      allow update: if (isOwner(userId) || isAdmin())
+        && isValidPlayerState(incoming())
+        && incoming().userId == userId
+        && incoming().userId == existing().userId;
+      allow delete: if false;
+    }
+
+    // Online player corporations
+    match /corporations/{corpId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn()
+        && isValidCorporation(incoming())
+        && incoming().founderId == request.auth.uid;
+      allow update: if isSignedIn()
+        && isValidCorporation(incoming())
+        && (
+          isAdmin()
+          || existing().founderId == request.auth.uid
+          || (existing().members != null && existing().members[request.auth.uid] != null)
+          || (incoming().applications != null && incoming().applications[request.auth.uid] != null)
+          || (existing().applications != null && existing().applications[request.auth.uid] != null)
+          || (existing().invites != null && existing().invites[request.auth.uid] != null)
+        );
+      allow delete: if false;
+    }
+
+    // Ledger transactions (append-only)
+    match /ledger/{ledgerId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isValidLedger(incoming());
+      allow update, delete: if false;
+    }
+
+    // Limited edition collectible stock counters
+    match /collectible_stock/{itemId} {
+      allow get, list: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidCollectibleStock(incoming());
+      allow delete: if false;
+    }
+
+    // Unique username registry
+    match /usernames/{usernameLower} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn()
+        && isValidUsername(incoming())
+        && incoming().userId == request.auth.uid;
+      allow update: if isSignedIn()
+        && isValidUsername(incoming())
+        && incoming().userId == request.auth.uid
+        && existing().userId == request.auth.uid;
+      allow delete: if false;
+    }
+  }
+}

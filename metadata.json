@@ -1,0 +1,7 @@
+{
+  "name": "Capitalfortune",
+  "description": "Wealth & Business simulator tycoon with cloud save and cooperative corporations powered by Firebase Firestore",
+  "version": "1.0.0",
+  "permissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
